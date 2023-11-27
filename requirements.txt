@@ -1,0 +1,5 @@
+bokeh>=3,<4
+dateparser>=1.2,<2
+openpyxl>=3,<4
+pandas>=2,<3
+git+https://github.com/bbusenius/FI.git#egg=FI
