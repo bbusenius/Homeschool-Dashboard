@@ -66,13 +66,17 @@ def generate_plots(files):
         for i, sheet_name in enumerate(sheet_names):
 
             df = pd.read_excel(file, sheet_name=sheet_name)
-
             df.columns = df.columns.str.lower()
 
             # Drop rows with NaT values
             df = df.dropna(subset=['end time'])
             df = df.dropna(subset=['start time'])
             df = df.dropna(subset=['date'])
+
+            # Make usre that start times and date times (datetime objects)
+            # are treated as strings so they can be reparsed for consistency
+            data_types = {'start time': str, 'end time': str}
+            df = df.astype(data_types)
 
             start_time = df['start time'] = pd.to_datetime(
                 df['start time'].apply(parse_date), errors='coerce'
