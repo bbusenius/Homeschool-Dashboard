@@ -8,7 +8,7 @@ from bokeh.models import Div
 from bokeh.resources import INLINE
 from jinja2 import Template
 
-from hsd_constants import OUTPUT_FILE, PALETTE
+from hsd_constants import LOGO_BW, OUTPUT_FILE, PALETTE
 from hsd_plot import barchart, curricula, days, donut, reading_level, reading_list
 from styles import CSS
 from templates import INNER_TEMPLATE_STR, OUTER_TEMPLATE_STR
@@ -27,8 +27,6 @@ def generate_plots(files):
     """
     seconds_in_an_hour = 3600
     name = ''
-    name_html = ''
-    name_script = ''
     inner_html = ''
     for file in files:
         spreadsheet = pd.ExcelFile(file)
@@ -166,12 +164,6 @@ def generate_plots(files):
                 pass
 
         # Simple HTML elements to drop on the page.
-        student_name = Div(
-            styles={'text-align': 'center', 'margin': '0', 'font-size': '1.1em'},
-            text=f'<h1>{name}\'s Homeschool Dashboard</h1>',
-            sizing_mode='stretch_width',
-        )
-
         total_hours_taught = Div(
             styles={'text-align': 'center', 'font-size': '2em'},
             text=f'<p><strong>{round(sum(hours), 2)}</strong> <br/>total hours taught</p>',
@@ -199,8 +191,6 @@ def generate_plots(files):
         }
 
         # Optional widgets and plots to dispaly
-        if name:
-            name_html, name_script = components(student_name)
         if not level.empty and not level_date.empty:
             widgets['reading_level'] = reading_level(level, level_date)
         if any(list(curricula_data.values())[1:]):
@@ -226,12 +216,11 @@ def generate_plots(files):
     outer_template = Template(OUTER_TEMPLATE_STR)
     outer_html = outer_template.render(
         content=inner_html,
-        name=name_html,
-        name_script=name_script,
-        # plot_script=script,
+        name=name,
         bokeh_js=js_resources,
         bokeh_css=css_resources,
         css=CSS,
+        logo=LOGO_BW,
     )
     return outer_html
 

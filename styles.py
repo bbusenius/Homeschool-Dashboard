@@ -12,6 +12,15 @@ body {
 header {
     background: #555555;
     color: #ffffff;
+    text-align: center;
+    padding: 1em;
+}
+h1 {
+    font-family: Helvetica, Arial, sans-serif;
+}
+#logo-main {
+    width: 15em;
+    margin: 0 auto;
 }
 .color-box {
     height: 100%;
@@ -52,6 +61,11 @@ header {
     border-bottom: 1px solid #ffffff;
 }
 @media (min-width: 1200px) {
+    #logo-main {
+        width: 15em;
+        margin: 0;
+    }
+
     .row {
         display: grid;
         grid-template-columns: repeat(12, 1fr);

@@ -63,8 +63,21 @@ OUTER_TEMPLATE_STR = '''<!DOCTYPE html>
     </head>
     <body>
         <header>
-            {{ name_script }}
-            {{ name }}
+            <div class="row">
+                <div class="grid-third">
+                    <div id="logo-main">
+                        {{ logo }}
+                    </div>
+                </div>
+                <div class="grid-third">
+                    {% if name  %}
+                        <h1>{{ name }}</h1>
+                    {% endif %}
+                </div>
+                <div class="grid-third">
+                    &nbsp;
+                </div>
+            </div>
         </header>
         <div class="main-wrapper">
             {{ content }}
