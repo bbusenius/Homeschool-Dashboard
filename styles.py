@@ -61,6 +61,12 @@ h1 {
     border-bottom: 1px solid #ffffff;
 }
 @media (min-width: 1200px) {
+    header {
+        height: 70px;
+    }
+    header h1 {
+        margin-top: 16px;
+    }
     #logo-main {
         width: 15em;
         margin: 0;
