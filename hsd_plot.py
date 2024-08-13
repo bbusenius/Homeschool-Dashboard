@@ -313,7 +313,7 @@ def reading_level(level, date):
     p.yaxis.minor_tick_line_color = None
     p.toolbar.logo = None
     p.line(x=x, y=y, line_color=PALETTE[1], line_width=2)
-    p.circle(x, y, size=6)
+    p.scatter(x, y, size=6)
     return p
 
 

@@ -241,11 +241,11 @@ class Tests(unittest.TestCase):
         self.assertEqual(p.tools, [])
         self.assertEqual(p.height, COLUMN_HEIGHT)
         self.assertEqual(p.sizing_mode, 'stretch_width')
-        # Check that the figure has a line and a circle glyph
+        # Check that the figure has a line and a scatter glyph
         self.assertEqual(len(p.renderers), 2)
         self.assertEqual(p.renderers[0].glyph.__class__.__name__, 'Line')
-        self.assertEqual(p.renderers[1].glyph.__class__.__name__, 'Circle')
-        # Check that the line and circle glyphs have the expected data and properties
+        self.assertEqual(p.renderers[1].glyph.__class__.__name__, 'Scatter')
+        # Check that the line and scatter glyphs have the expected data and properties
         self.assertEqual(p.renderers[0].data_source.data['x'], list(self.date))
         self.assertEqual(p.renderers[0].data_source.data['y'], list(self.level))
         self.assertEqual(p.renderers[0].glyph.line_color, PALETTE[1])
