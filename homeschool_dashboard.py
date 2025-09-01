@@ -117,13 +117,14 @@ def generate_plots(files):
             # Populate curricula data
             try:
                 materials = df['materials'].dropna()
-                curricula_data['Materials'].extend(materials)
-                curricula_data['Course'].append(sheet_name)
-                curricula_data['Course'].extend(
-                    [pd.NA for i in range(len(materials) - 1)]
-                )
-                isbn = df['isbn'][: len(materials)].fillna('')
-                curricula_data['ISBN'].extend(isbn)
+                if len(materials) > 0:
+                    curricula_data['Materials'].extend(materials)
+                    curricula_data['Course'].append(sheet_name)
+                    curricula_data['Course'].extend(
+                        [pd.NA for i in range(len(materials) - 1)]
+                    )
+                    isbn = df['isbn'][: len(materials)].fillna('')
+                    curricula_data['ISBN'].extend(isbn)
             except (KeyError):
                 pass
 
