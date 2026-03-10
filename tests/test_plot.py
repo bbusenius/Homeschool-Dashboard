@@ -8,8 +8,8 @@ from bokeh.models import ColumnDataSource, DataTable, Div, RangeTool
 from bokeh.models.glyphs import VBar
 from bokeh.models.renderers import GlyphRenderer
 from bokeh.plotting import figure
-from constants import COLUMN_HEIGHT, PALETTE
-from plot import barchart, curricula, days, donut, reading_level, reading_list
+from hsd_constants import COLUMN_HEIGHT, PALETTE
+from hsd_plot import barchart, curricula, days, donut, reading_level, reading_list
 
 
 class Tests(unittest.TestCase):

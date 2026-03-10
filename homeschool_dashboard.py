@@ -1,4 +1,5 @@
 import argparse
+import os
 import webbrowser
 from datetime import datetime
 
@@ -61,108 +62,162 @@ def generate_plots(files):
                 'description': [],
             }
 
+        filename = os.path.basename(file)
+
         for i, sheet_name in enumerate(sheet_names):
-
-            df = pd.read_excel(file, sheet_name=sheet_name)
-            df.columns = df.columns.str.lower()
-
-            # Drop rows with NaT values
-            df = df.dropna(subset=['end time'])
-            df = df.dropna(subset=['start time'])
-            df = df.dropna(subset=['date'])
-
-            # Make usre that start times and date times (datetime objects)
-            # are treated as strings so they can be reparsed for consistency
-            data_types = {'start time': str, 'end time': str}
-            df = df.astype(data_types)
-
-            start_time = df['start time'] = pd.to_datetime(
-                df['start time'].apply(parse_date), errors='coerce'
-            )
-            end_time = df['end time'] = pd.to_datetime(
-                df['end time'].apply(parse_date), errors='coerce'
-            )
-            duration = end_time - start_time
-            hours_decimal = duration.dt.total_seconds() / seconds_in_an_hour
-            df['hours'] = hours_decimal
-
-            oldest_date = pd.to_datetime(df['date']).min()
-            newest_date = pd.to_datetime(df['date']).max()
-            if oldest_date < min_date:
-                min_date = oldest_date
-            if newest_date > max_date:
-                max_date = newest_date
-
-            day_data[sheet_name]['dates'].extend(pd.to_datetime(df['date']))
-            day_data[sheet_name]['date_strings'].extend(
-                pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
-            )
-            num_cells = len(day_data[sheet_name]['dates'])
-            day_data[sheet_name]['start_times'].extend(start_time.dt.time)
-            day_data[sheet_name]['start_time_strings'].extend(
-                start_time.dt.strftime('%I:%M %p')
-            )
-            day_data[sheet_name]['end_times'].extend(end_time.dt.time)
-            day_data[sheet_name]['end_time_strings'].extend(
-                end_time.dt.strftime('%I:%M %p')
-            )
-            day_data[sheet_name]['hours'].extend(df['hours'])
-            day_data[sheet_name]['color'].extend([PALETTE[i] for x in range(num_cells)])
-            day_data[sheet_name]['class'].extend([sheet_name for x in range(num_cells)])
-            day_data[sheet_name]['description'].extend(df['description'])
-
-            total_hours = df['hours'].sum()
-            hours.append(total_hours)
-
-            # Populate curricula data
             try:
-                materials = df['materials'].dropna()
-                if len(materials) > 0:
-                    curricula_data['Materials'].extend(materials)
-                    curricula_data['Course'].append(sheet_name)
-                    curricula_data['Course'].extend(
-                        [pd.NA for i in range(len(materials) - 1)]
+                df = pd.read_excel(file, sheet_name=sheet_name)
+                df.columns = df.columns.str.lower()
+
+                # Validate required columns exist
+                required_cols = ['date', 'start time', 'end time']
+                missing = [c for c in required_cols if c not in df.columns]
+                if missing:
+                    raise KeyError(
+                        f"Missing required column(s): "
+                        f"{', '.join(missing)}"
                     )
-                    isbn = df['isbn'][: len(materials)].fillna('')
-                    curricula_data['ISBN'].extend(isbn)
-            except (KeyError):
-                pass
 
-            # Set global variables if they exist in the first row of any
-            # spreadsheet These are treated like user configuration.
-            try:
-                column_index = df.columns.get_loc('grade')
-                tmp_grade = df.iloc[0, column_index]
-                if isinstance(tmp_grade, str):
-                    grade = tmp_grade
-            except (KeyError):
-                pass
+                # Drop rows with NaT values
+                df = df.dropna(subset=['end time'])
+                df = df.dropna(subset=['start time'])
+                df = df.dropna(subset=['date'])
 
-            try:
-                column_index = df.columns.get_loc('name')
-                tmp_name = df.iloc[0, column_index]
-                if isinstance(tmp_name, str):
-                    name = tmp_name
-            except (KeyError):
-                pass
+                # Make usre that start times and date times (datetime objects)
+                # are treated as strings so they can be reparsed for consistency
+                data_types = {'start time': str, 'end time': str}
+                df = df.astype(data_types)
 
-            try:
-                column_index = df.columns.get_loc('reading list')
-                reading_list_path = df.iloc[0, column_index]
-            except (KeyError):
-                pass
+                start_time = df['start time'] = pd.to_datetime(
+                    df['start time'].apply(parse_date), errors='coerce'
+                )
+                end_time = df['end time'] = pd.to_datetime(
+                    df['end time'].apply(parse_date), errors='coerce'
+                )
 
-            # Build reading lists if a path was found.
-            if reading_list_path:
-                reading_lists = reading_list(reading_list_path)
+                parsed_dates = pd.to_datetime(
+                    df['date'], errors='coerce'
+                )
 
-            # Reading level if it exists.
-            try:
-                level = df['reading level'].dropna()
-                copy = df.loc[level.index]
-                level_date = pd.to_datetime(copy['date'])
-            except (KeyError):
-                pass
+                # Check for unparseable dates/times and report row numbers
+                bad_rows = []
+                for idx in df.index:
+                    row_num = idx + 2  # +1 for 0-index, +1 for header row
+                    if pd.isna(parsed_dates.at[idx]):
+                        bad_rows.append(
+                            f"  Row {row_num}: invalid 'date'"
+                        )
+                    if pd.isna(start_time.at[idx]):
+                        bad_rows.append(
+                            f"  Row {row_num}: invalid 'start time'"
+                        )
+                    if pd.isna(end_time.at[idx]):
+                        bad_rows.append(
+                            f"  Row {row_num}: invalid 'end time'"
+                        )
+                if bad_rows:
+                    detail = "\n".join(bad_rows)
+                    raise ValueError(
+                        f"Invalid data found:\n{detail}"
+                    )
+
+                duration = end_time - start_time
+                hours_decimal = (
+                    duration.dt.total_seconds() / seconds_in_an_hour
+                )
+                df['hours'] = hours_decimal
+
+                oldest_date = parsed_dates.min()
+                newest_date = parsed_dates.max()
+                if oldest_date < min_date:
+                    min_date = oldest_date
+                if newest_date > max_date:
+                    max_date = newest_date
+
+                day_data[sheet_name]['dates'].extend(parsed_dates)
+                day_data[sheet_name]['date_strings'].extend(
+                    parsed_dates.dt.strftime('%Y-%m-%d')
+                )
+                num_cells = len(day_data[sheet_name]['dates'])
+                day_data[sheet_name]['start_times'].extend(
+                    start_time.dt.time
+                )
+                day_data[sheet_name]['start_time_strings'].extend(
+                    start_time.dt.strftime('%I:%M %p')
+                )
+                day_data[sheet_name]['end_times'].extend(end_time.dt.time)
+                day_data[sheet_name]['end_time_strings'].extend(
+                    end_time.dt.strftime('%I:%M %p')
+                )
+                day_data[sheet_name]['hours'].extend(df['hours'])
+                day_data[sheet_name]['color'].extend(
+                    [PALETTE[i] for x in range(num_cells)]
+                )
+                day_data[sheet_name]['class'].extend(
+                    [sheet_name for x in range(num_cells)]
+                )
+                day_data[sheet_name]['description'].extend(
+                    df['description']
+                )
+
+                total_hours = df['hours'].sum()
+                hours.append(total_hours)
+
+                # Populate curricula data
+                try:
+                    materials = df['materials'].dropna()
+                    if len(materials) > 0:
+                        curricula_data['Materials'].extend(materials)
+                        curricula_data['Course'].append(sheet_name)
+                        curricula_data['Course'].extend(
+                            [pd.NA for i in range(len(materials) - 1)]
+                        )
+                        isbn = df['isbn'][: len(materials)].fillna('')
+                        curricula_data['ISBN'].extend(isbn)
+                except (KeyError):
+                    pass
+
+                # Set global variables if they exist in the first row of
+                # any spreadsheet. These are treated like user
+                # configuration.
+                try:
+                    column_index = df.columns.get_loc('grade')
+                    tmp_grade = df.iloc[0, column_index]
+                    if isinstance(tmp_grade, str):
+                        grade = tmp_grade
+                except (KeyError):
+                    pass
+
+                try:
+                    column_index = df.columns.get_loc('name')
+                    tmp_name = df.iloc[0, column_index]
+                    if isinstance(tmp_name, str):
+                        name = tmp_name
+                except (KeyError):
+                    pass
+
+                try:
+                    column_index = df.columns.get_loc('reading list')
+                    reading_list_path = df.iloc[0, column_index]
+                except (KeyError):
+                    pass
+
+                # Build reading lists if a path was found.
+                if reading_list_path:
+                    reading_lists = reading_list(reading_list_path)
+
+                # Reading level if it exists.
+                try:
+                    level = df['reading level'].dropna()
+                    copy = df.loc[level.index]
+                    level_date = pd.to_datetime(copy['date'])
+                except (KeyError):
+                    pass
+
+            except Exception as e:
+                raise type(e)(
+                    f"Sheet '{sheet_name}' in '{filename}': {e}"
+                ) from e
 
         # Simple HTML elements to drop on the page.
         total_hours_taught = Div(
