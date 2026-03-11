@@ -16,6 +16,34 @@ from templates import INNER_TEMPLATE_STR, OUTER_TEMPLATE_STR
 from utils import parse_date
 
 
+def _find_bad_rows(df, checks):
+    """Find rows with invalid data and return formatted error messages.
+
+    Args:
+        df (DataFrame): the DataFrame being validated.
+        checks (list): list of (mask, message) tuples where mask is a
+            boolean Series and message describes the problem.
+
+    Returns:
+        list: formatted error strings, one per bad row/field.
+    """
+    bad_rows = []
+    # Combine all boolean masks into one using bitwise OR (|=) so
+    # that any row flagged by any check is included. This is a
+    # vectorized pandas operation, not a per-row loop.
+    combined = pd.Series(False, index=df.index)
+    for mask, _ in checks:
+        combined |= mask
+    # Only loop over rows when there's actually bad data
+    if combined.any():
+        for idx in df.index[combined]:
+            row_num = idx + 2  # +1 for 0-index, +1 for header row
+            for mask, msg in checks:
+                if mask.at[idx]:
+                    bad_rows.append(f"  Row {row_num}: {msg}")
+    return bad_rows
+
+
 def generate_plots(files):
     """Main function that generates the plots and all corresponding html.
 
@@ -100,21 +128,11 @@ def generate_plots(files):
                 )
 
                 # Check for unparseable dates/times and report row numbers
-                bad_rows = []
-                for idx in df.index:
-                    row_num = idx + 2  # +1 for 0-index, +1 for header row
-                    if pd.isna(parsed_dates.at[idx]):
-                        bad_rows.append(
-                            f"  Row {row_num}: invalid 'date'"
-                        )
-                    if pd.isna(start_time.at[idx]):
-                        bad_rows.append(
-                            f"  Row {row_num}: invalid 'start time'"
-                        )
-                    if pd.isna(end_time.at[idx]):
-                        bad_rows.append(
-                            f"  Row {row_num}: invalid 'end time'"
-                        )
+                bad_rows = _find_bad_rows(df, [
+                    (parsed_dates.isna(), "invalid 'date'"),
+                    (start_time.isna(), "invalid 'start time'"),
+                    (end_time.isna(), "invalid 'end time'"),
+                ])
                 if bad_rows:
                     detail = "\n".join(bad_rows)
                     raise ValueError(
@@ -122,6 +140,18 @@ def generate_plots(files):
                     )
 
                 duration = end_time - start_time
+
+                # Check for end times before start times (e.g. AM/PM error)
+                bad_durations = _find_bad_rows(df, [
+                    (duration < pd.Timedelta(0),
+                     "end time is before start time"),
+                ])
+                if bad_durations:
+                    detail = "\n".join(bad_durations)
+                    raise ValueError(
+                        f"Invalid data found:\n{detail}"
+                    )
+
                 hours_decimal = (
                     duration.dt.total_seconds() / seconds_in_an_hour
                 )
