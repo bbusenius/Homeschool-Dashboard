@@ -13,6 +13,7 @@ from hsd_constants import LOGO_BW, OUTPUT_FILE, PALETTE
 from hsd_plot import barchart, curricula, days, donut, reading_level, reading_list
 from styles import CSS
 from templates import INNER_TEMPLATE_STR, OUTER_TEMPLATE_STR
+from fi import get_percentage
 from utils import parse_date
 
 
@@ -63,6 +64,7 @@ def generate_plots(files):
 
         grade = ''
         hours = []
+        teacher_hours = {}
         min_date = datetime.max
         max_date = datetime.min
         day_data = {}
@@ -193,6 +195,16 @@ def generate_plots(files):
                 total_hours = df['hours'].sum()
                 hours.append(total_hours)
 
+                # Accumulate hours per teacher
+                try:
+                    teachers = df['teacher'].fillna('Independent')
+                    for teacher, h in df.groupby(teachers)['hours'].sum().items():
+                        teacher_hours[teacher] = (
+                            teacher_hours.get(teacher, 0) + h
+                        )
+                except (KeyError):
+                    pass
+
                 # Populate curricula data
                 try:
                     materials = df['materials'].dropna()
@@ -250,9 +262,29 @@ def generate_plots(files):
                 ) from e
 
         # Simple HTML elements to drop on the page.
+        total = sum(hours)
+        teacher_html = ''
+        if teacher_hours:
+            sorted_teachers = sorted(
+                teacher_hours.items(), key=lambda x: x[1], reverse=True
+            )
+            lines = [
+                f'{name}: {get_percentage(h, total, r=True)}%'
+                for name, h in sorted_teachers
+            ]
+            teacher_html = (
+                '<hr style="margin: 0.5em 0;"/>'
+                '<p style="font-size: 0.5em;">'
+                + '<br/>'.join(lines)
+                + '</p>'
+            )
         total_hours_taught = Div(
             styles={'text-align': 'center', 'font-size': '2em'},
-            text=f'<p><strong>{round(sum(hours), 2)}</strong> <br/>total hours taught</p>',
+            text=(
+                f'<p><strong>{round(total, 2)}</strong>'
+                f' <br/>hours of learning</p>'
+                f'{teacher_html}'
+            ),
             sizing_mode='stretch_width',
         )
 
