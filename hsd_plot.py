@@ -2,6 +2,8 @@
 
 This module contains functions for handling data visualization with Bokeh.
 """
+import os
+import warnings
 from datetime import timedelta
 from math import pi
 
@@ -213,20 +215,41 @@ def days(day_data, min_date, max_date):
     return [p, select]
 
 
-def reading_list(path):
+def _resolve_reading_list_path(path, base_dir=None):
+    if not isinstance(path, str):
+        return None
+
+    path = path.strip()
+    if not path:
+        return None
+
+    path = os.path.expanduser(path)
+    if base_dir and not os.path.isabs(path):
+        path = os.path.join(base_dir, path)
+
+    path = os.path.abspath(path)
+    if not os.path.isfile(path):
+        warnings.warn(f"Reading list not found: {path}", RuntimeWarning)
+        return None
+
+    return path
+
+
+def reading_list(path, base_dir=None):
     """Reads a spreadsheet file containing multiple sheets of book data and creates
     a list of Bokeh DataTables with optional columns based on the available data.
 
     Args:
         path (str): The file path to the Excel spreadsheet.
+        base_dir (str): Directory to resolve relative paths against.
 
     Returns:
         list: A list of Bokeh DataTables, each representing a sheet in the spreadsheet.
             Each DataTable includes columns such as 'Title', 'Author', 'Language', 'ISBN',
             and an optional 'Level' column if the 'level' information is available.
     """
-    # Bail if there's not a path
-    if not isinstance(path, str):
+    path = _resolve_reading_list_path(path, base_dir=base_dir)
+    if path is None:
         return []
 
     with pd.ExcelFile(path) as spreadsheet:

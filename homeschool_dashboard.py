@@ -246,7 +246,10 @@ def generate_plots(files):
 
                 # Build reading lists if a path was found.
                 if reading_list_path:
-                    reading_lists = reading_list(reading_list_path)
+                    reading_lists = reading_list(
+                        reading_list_path,
+                        base_dir=os.path.dirname(os.path.abspath(file)),
+                    )
 
                 # Reading level if it exists.
                 try:

@@ -231,6 +231,21 @@ class Tests(unittest.TestCase):
         # Check that the kids columns do not have a level column
         self.assertFalse(any(column.field == 'level' for column in kids_columns))
 
+    def test_reading_list_resolves_relative_path_from_base_dir(self):
+        base_dir = os.path.dirname(os.path.abspath(self.path))
+
+        book_lists = reading_list(os.path.basename(self.path), base_dir=base_dir)
+
+        self.assertEqual(len(book_lists), 2)
+        self.assertEqual(book_lists[0][0].text, '<h3>Adults</h3>')
+        self.assertEqual(book_lists[1][0].text, '<h3>Kids</h3>')
+
+    def test_reading_list_missing_file_returns_empty_list(self):
+        with self.assertWarns(RuntimeWarning):
+            book_lists = reading_list('missing.xlsx', base_dir=os.getcwd())
+
+        self.assertEqual(book_lists, [])
+
     def test_reading_level(self):
         # Test the reading_level function with the sample data
         p = reading_level(self.level, self.date)
