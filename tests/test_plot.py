@@ -309,6 +309,19 @@ class Tests(unittest.TestCase):
         )
         self.assertListEqual(list(data_table.source.data['ISBN']), source.data['ISBN'])
 
+    def test_curricula_displays_missing_values_as_empty(self):
+        data_table = curricula(
+            {
+                'Course': ['Math', pd.NA],
+                'Materials': ['Book1', 'Book2'],
+                'ISBN': ['123456', pd.NA],
+            }
+        )
+
+        self.assertEqual(list(data_table.source.data['Course']), ['Math', ''])
+        self.assertEqual(list(data_table.source.data['Materials']), ['Book1', 'Book2'])
+        self.assertEqual(list(data_table.source.data['ISBN']), ['123456', ''])
+
     def tearDown(self):
         # Delete the sample spreadsheet
         os.remove(self.path)

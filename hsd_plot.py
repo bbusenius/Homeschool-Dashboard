@@ -373,7 +373,7 @@ def curricula(data):
         bokeh.models.widgets.tables.DataTable: A Bokeh DataTable displaying
         the provided curricula data.
     """
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data).fillna('')
     source = ColumnDataSource(df)
     columns = [TableColumn(field=col, title=col) for col in df.columns]
     data_table = DataTable(
