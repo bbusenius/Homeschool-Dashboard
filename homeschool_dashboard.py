@@ -9,7 +9,7 @@ from bokeh.models import Div
 from bokeh.resources import INLINE
 from jinja2 import Template
 
-from hsd_constants import LOGO_BW, OUTPUT_FILE, PALETTE
+from hsd_constants import LOGO_BW, OUTPUT_FILE, PALETTE, empty_day_data
 from hsd_plot import barchart, curricula, days, donut, reading_level, reading_list
 from styles import CSS
 from templates import INNER_TEMPLATE_STR, OUTER_TEMPLATE_STR
@@ -59,11 +59,12 @@ def generate_plots(files):
     name = ''
     inner_html = ''
     for file in files:
-        spreadsheet = pd.ExcelFile(file)
-        sheet_names = spreadsheet.sheet_names
+        with pd.ExcelFile(file) as spreadsheet:
+            sheet_names = list(spreadsheet.sheet_names)
 
         grade = ''
         hours = []
+        class_names = []
         teacher_hours = {}
         min_date = datetime.max
         max_date = datetime.min
@@ -77,20 +78,6 @@ def generate_plots(files):
             'Materials': [],
             'ISBN': [],
         }
-
-        for key in sheet_names:
-            day_data[key] = {
-                'dates': [],
-                'date_strings': [],
-                'hours': [],
-                'start_times': [],
-                'start_time_strings': [],
-                'end_times': [],
-                'end_time_strings': [],
-                'color': [],
-                'class': [],
-                'description': [],
-            }
 
         filename = os.path.basename(file)
 
@@ -112,6 +99,10 @@ def generate_plots(files):
                 df = df.dropna(subset=['end time'])
                 df = df.dropna(subset=['start time'])
                 df = df.dropna(subset=['date'])
+
+                # Class tabs with required headers but no sessions yet
+                if df.empty:
+                    continue
 
                 # Make usre that start times and date times (datetime objects)
                 # are treated as strings so they can be reparsed for consistency
@@ -166,6 +157,7 @@ def generate_plots(files):
                 if newest_date > max_date:
                     max_date = newest_date
 
+                day_data[sheet_name] = empty_day_data()
                 day_data[sheet_name]['dates'].extend(parsed_dates)
                 day_data[sheet_name]['date_strings'].extend(
                     parsed_dates.dt.strftime('%Y-%m-%d')
@@ -194,6 +186,7 @@ def generate_plots(files):
 
                 total_hours = df['hours'].sum()
                 hours.append(total_hours)
+                class_names.append(sheet_name)
 
                 # Accumulate hours per teacher
                 try:
@@ -305,8 +298,8 @@ def generate_plots(files):
         # Widgets and plots to display
         widgets = {
             'total_hours': total_hours_taught,
-            'barchart': barchart(sheet_names, hours),
-            'donut': donut(sheet_names, hours),
+            'barchart': barchart(class_names, hours),
+            'donut': donut(class_names, hours),
             'days': days_plot,
             'slider': days_select,
         }
@@ -328,9 +321,6 @@ def generate_plots(files):
             grade=grade,
         )
         inner_html += html
-
-        # Redundant closing of file but necessary for some reason
-        spreadsheet.close()
 
     js_resources = INLINE.render_js()
     css_resources = INLINE.render_css()

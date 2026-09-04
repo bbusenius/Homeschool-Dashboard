@@ -54,6 +54,27 @@ class Tests(unittest.TestCase):
             reading_list_1.to_excel(writer, sheet_name='Adults')
             reading_list_2.to_excel(writer, sheet_name='Kids')
 
+    def test_barchart_empty_data(self):
+        plot = barchart([], [])
+
+        self.assertIsInstance(plot, figure)
+        self.assertEqual(plot.y_range.start, 0)
+        self.assertEqual(plot.y_range.end, 1)
+
+    def test_donut_empty_data(self):
+        plot = donut([], [])
+
+        self.assertIsInstance(plot, figure)
+        self.assertEqual(plot.title.text, 'Classes')
+
+    def test_days_empty_data(self):
+        plots = days({}, datetime.max, datetime.min)
+
+        self.assertEqual(len(plots), 2)
+        self.assertTrue(isinstance(plots[0], figure))
+        self.assertTrue(isinstance(plots[1], figure))
+        self.assertTrue(any(isinstance(tool, RangeTool) for tool in plots[1].tools))
+
     def test_barchart(self):
 
         plot = barchart(self.labels, self.data)

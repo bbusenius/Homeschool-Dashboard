@@ -4,7 +4,7 @@ This module contains functions for handling data visualization with Bokeh.
 """
 import os
 import warnings
-from datetime import timedelta
+from datetime import datetime, timedelta
 from math import pi
 
 import pandas as pd
@@ -21,7 +21,7 @@ from bokeh.plotting import figure
 from bokeh.transform import factor_cmap
 from fi import get_percentage
 
-from hsd_constants import COLUMN_HEIGHT, PALETTE
+from hsd_constants import COLUMN_HEIGHT, PALETTE, empty_day_data
 
 
 def barchart(labels, data):
@@ -60,9 +60,10 @@ def barchart(labels, data):
 
     p.xgrid.grid_line_color = None
     p.y_range.start = 0
-    p.y_range.end = max(data)
-    p.legend.orientation = 'horizontal'
-    p.legend.location = 'top_center'
+    p.y_range.end = max(data) if data else 1
+    if data:
+        p.legend.orientation = 'horizontal'
+        p.legend.location = 'top_center'
     p.toolbar.active_drag = None
 
     return p
@@ -82,7 +83,10 @@ def donut(labels, data):
         Bokeh plot
     """
     total_hours = sum(data)
-    percentages = [get_percentage(d, total_hours, i=False, r=True) for d in data]
+    percentages = [
+        get_percentage(d, total_hours, i=False, r=True) if total_hours else 0
+        for d in data
+    ]
     source = ColumnDataSource(data=dict(labels=labels, data=percentages))
     donut = figure(
         title='Classes',
@@ -165,6 +169,12 @@ def days(day_data, min_date, max_date):
         ('Description', '@description'),
     ]
 
+    if min_date > max_date:
+        max_date = datetime.now()
+        min_date = max_date - timedelta(days=30)
+
+    empty_data = empty_day_data()
+
     p = figure(
         x_axis_type='datetime',
         x_axis_location='above',
@@ -176,6 +186,17 @@ def days(day_data, min_date, max_date):
     p.toolbar.logo = None
     p.toolbar.active_drag = None
 
+    source = ColumnDataSource(empty_data)
+    if not day_data:
+        p.segment(
+            x0='dates',
+            y0='start_times',
+            x1='dates',
+            y1='end_times',
+            line_color='color',
+            source=source,
+            line_width=8,
+        )
     for sheet in day_data:
         data = day_data[sheet]
         source = ColumnDataSource(data)
@@ -190,7 +211,7 @@ def days(day_data, min_date, max_date):
             line_width=8,
         )
 
-        p.yaxis[0].formatter = DatetimeTickFormatter(hours='%I:%M %p')
+    p.yaxis[0].formatter = DatetimeTickFormatter(hours='%I:%M %p')
 
     select = figure(
         title='Drag the slider to change the range above',
