@@ -5,6 +5,7 @@ import unittest
 import pandas as pd
 
 from homeschool_dashboard import generate_plots
+from hsd_constants import PALETTE, palette_for
 
 
 REQUIRED_COLUMNS = ['Date', 'Start Time', 'End Time', 'Description']
@@ -14,6 +15,17 @@ def _write_workbook(path, sheets):
     with pd.ExcelWriter(path) as writer:
         for name, df in sheets.items():
             df.to_excel(writer, sheet_name=name, index=False)
+
+
+def _session(description='Work'):
+    return pd.DataFrame(
+        {
+            'Date': ['2023-01-15'],
+            'Start Time': ['9:00 AM'],
+            'End Time': ['10:00 AM'],
+            'Description': [description],
+        }
+    )
 
 
 class TestGeneratePlotsEmptySheets(unittest.TestCase):
@@ -76,6 +88,50 @@ class TestGeneratePlotsEmptySheets(unittest.TestCase):
         self.assertIn('start time', message)
         self.assertIn('end time', message)
 
+    def test_empty_sheet_does_not_consume_a_palette_color(self):
+        empty = pd.DataFrame(columns=REQUIRED_COLUMNS)
+        math = _session('Addition')
+        math['Grade'] = ['Kindergarten']
+        _write_workbook(self.path, {'Art': empty, 'Math': math})
+
+        html = generate_plots([self.path])
+
+        self.assertIn('"Math"', html)
+        self.assertNotIn('"Art"', html)
+        self.assertIn(PALETTE[0].lower(), html.lower())
+
+    def test_empty_sheet_plus_ten_classes_keeps_spectral10(self):
+        sheets = {'Empty': pd.DataFrame(columns=REQUIRED_COLUMNS)}
+        sheets.update({f'Class{i:02d}': _session() for i in range(10)})
+        _write_workbook(self.path, sheets)
+
+        html = generate_plots([self.path])
+        html_lower = html.lower()
+
+        for i in range(10):
+            self.assertIn(f'"Class{i:02d}"', html)
+        self.assertNotIn('"Empty"', html)
+        self.assertIn(PALETTE[0].lower(), html_lower)
+        self.assertIn(PALETTE[-1].lower(), html_lower)
+        self.assertNotIn(palette_for(11)[1].lower(), html_lower)
+
+    def test_eleven_classes_interpolates_spectral10(self):
+        names = [f'Class{i:02d}' for i in range(11)]
+        sheets = {name: _session() for name in names}
+        _write_workbook(self.path, sheets)
+
+        html = generate_plots([self.path])
+        html_lower = html.lower()
+        colors = palette_for(11)
+
+        for name in names:
+            self.assertIn(f'"{name}"', html)
+        self.assertEqual(len(colors), 11)
+        self.assertIn(colors[1].lower(), html_lower)
+        self.assertIn(colors[-1].lower(), html_lower)
+        self.assertNotIn('#ffffbf', html_lower)
+
 
 if __name__ == '__main__':
     unittest.main()
+

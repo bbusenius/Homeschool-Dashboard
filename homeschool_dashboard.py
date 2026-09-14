@@ -9,7 +9,7 @@ from bokeh.models import Div
 from bokeh.resources import INLINE
 from jinja2 import Template
 
-from hsd_constants import LOGO_BW, OUTPUT_FILE, PALETTE, empty_day_data
+from hsd_constants import LOGO_BW, OUTPUT_FILE, empty_day_data, palette_for
 from hsd_plot import barchart, curricula, days, donut, reading_level, reading_list
 from styles import CSS
 from templates import INNER_TEMPLATE_STR, OUTER_TEMPLATE_STR
@@ -81,7 +81,7 @@ def generate_plots(files):
 
         filename = os.path.basename(file)
 
-        for i, sheet_name in enumerate(sheet_names):
+        for sheet_name in sheet_names:
             try:
                 df = pd.read_excel(file, sheet_name=sheet_name)
                 df.columns = df.columns.str.lower()
@@ -174,9 +174,6 @@ def generate_plots(files):
                     end_time.dt.strftime('%I:%M %p')
                 )
                 day_data[sheet_name]['hours'].extend(df['hours'])
-                day_data[sheet_name]['color'].extend(
-                    [PALETTE[i] for x in range(num_cells)]
-                )
                 day_data[sheet_name]['class'].extend(
                     [sheet_name for x in range(num_cells)]
                 )
@@ -283,6 +280,11 @@ def generate_plots(files):
             ),
             sizing_mode='stretch_width',
         )
+
+        palette = palette_for(len(class_names))
+        for color_i, sheet_name in enumerate(class_names):
+            n_cells = len(day_data[sheet_name]['dates'])
+            day_data[sheet_name]['color'] = [palette[color_i]] * n_cells
 
         days_plot, days_select = days(day_data, min_date, max_date)
 

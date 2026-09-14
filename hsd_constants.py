@@ -1,8 +1,19 @@
-from bokeh.palettes import Spectral10
+from bokeh.palettes import Spectral10, interp_palette
 
 COLUMN_HEIGHT = 450
 PALETTE = Spectral10
 OUTPUT_FILE = 'homeschool-dashboard.html'
+
+
+def palette_for(n):
+    """Return a Spectral10-based palette with at least n colors.
+
+    Dashboards with 10 or fewer classes keep Spectral10 unchanged so
+    existing colors stay put. More classes interpolate the same ramp.
+    """
+    if n <= len(PALETTE):
+        return PALETTE
+    return interp_palette(list(PALETTE), n)
 
 DAY_DATA_KEYS = (
     'dates',

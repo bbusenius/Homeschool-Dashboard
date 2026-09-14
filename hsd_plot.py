@@ -21,7 +21,7 @@ from bokeh.plotting import figure
 from bokeh.transform import factor_cmap
 from fi import get_percentage
 
-from hsd_constants import COLUMN_HEIGHT, PALETTE, empty_day_data
+from hsd_constants import COLUMN_HEIGHT, PALETTE, empty_day_data, palette_for
 
 
 def barchart(labels, data):
@@ -37,6 +37,7 @@ def barchart(labels, data):
     Returns:
         Bokeh plot
     """
+    palette = palette_for(len(labels))
     source = ColumnDataSource(data=dict(labels=labels, data=data))
     p = figure(
         x_range=labels,
@@ -55,7 +56,7 @@ def barchart(labels, data):
         source=source,
         legend_field='labels',
         line_color='white',
-        fill_color=factor_cmap('labels', palette=PALETTE, factors=labels),
+        fill_color=factor_cmap('labels', palette=palette, factors=labels),
     )
 
     p.xgrid.grid_line_color = None
@@ -82,6 +83,7 @@ def donut(labels, data):
     Returns:
         Bokeh plot
     """
+    palette = palette_for(len(labels))
     total_hours = sum(data)
     percentages = [
         get_percentage(d, total_hours, i=False, r=True) if total_hours else 0
@@ -111,7 +113,7 @@ def donut(labels, data):
         start_angle='start_angle',
         end_angle='end_angle',
         line_color='white',
-        fill_color=factor_cmap('labels', palette=PALETTE, factors=labels),
+        fill_color=factor_cmap('labels', palette=palette, factors=labels),
         legend_field='labels',
         source=source,
     )
