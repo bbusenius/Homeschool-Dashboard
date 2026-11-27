@@ -1,9 +1,11 @@
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 import pandas as pd
 
+import homeschool_dashboard
 from homeschool_dashboard import generate_plots
 from hsd_constants import PALETTE, palette_for
 
@@ -130,6 +132,107 @@ class TestGeneratePlotsEmptySheets(unittest.TestCase):
         self.assertIn(colors[1].lower(), html_lower)
         self.assertIn(colors[-1].lower(), html_lower)
         self.assertNotIn('#ffffbf', html_lower)
+
+
+class TestGeneratePlotsReadingData(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.tmp.name, 'Time-4.xlsx')
+        books_dir = os.path.join(self.tmp.name, 'books')
+        os.makedirs(books_dir)
+        self.books_relpath = os.path.join('books', 'Reading-List.xlsx')
+        books = pd.DataFrame(
+            {
+                'Title': ['Sample Title', 'Another Sample Title'],
+                'Author': ['Sample Author', 'Another Author'],
+                'Language': ['English', 'English'],
+                'ISBN': ['', ''],
+            }
+        )
+        _write_workbook(
+            os.path.join(self.tmp.name, self.books_relpath),
+            {'Sample Books': books},
+        )
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _reading_tab(self):
+        df = pd.DataFrame(
+            {
+                'Date': ['2023-01-15', '2023-02-15'],
+                'Start Time': ['9:00 AM', '9:00 AM'],
+                'End Time': ['10:00 AM', '10:00 AM'],
+                'Description': ['Reading', 'Reading'],
+                'Grade': ['Grade 4', None],
+                'Name': ['Alex', None],
+                'Reading List': [self.books_relpath, None],
+                'Reading Level': [3.2, 3.6],
+            }
+        )
+        return df
+
+    def _blank_reading_tab(self, description, reading_list=None):
+        df = _session(description)
+        df['Reading List'] = [reading_list]
+        df['Reading Level'] = [None]
+        return df
+
+    def _assert_reading_widgets(self, html):
+        # assertIn would dump the whole page on failure.
+        for text in ('Sample Title', 'Sample Author', 'Sample Books'):
+            self.assertTrue(text in html, f'booklist missing {text!r}')
+        self.assertTrue('Reading Level' in html, 'reading level chart missing')
+
+    def test_every_tab_has_reading_columns_but_only_middle_has_values(self):
+        sheets = {
+            'Art': self._blank_reading_tab('Drawing'),
+            'Reading': self._reading_tab(),
+            'Science': self._blank_reading_tab('Plants'),
+        }
+        _write_workbook(self.path, sheets)
+
+        with mock.patch.object(
+            homeschool_dashboard,
+            'reading_list',
+            wraps=homeschool_dashboard.reading_list,
+        ) as spy:
+            html = generate_plots([self.path])
+
+        self._assert_reading_widgets(html)
+        self.assertEqual(spy.call_count, 1)
+
+    def test_later_blank_tabs_do_not_wipe_reading_data(self):
+        sheets = {
+            'Reading': self._reading_tab(),
+            'Math': self._blank_reading_tab('Addition', reading_list='   '),
+            'Science': self._blank_reading_tab('Plants'),
+        }
+        _write_workbook(self.path, sheets)
+
+        html = generate_plots([self.path])
+
+        self._assert_reading_widgets(html)
+
+    def test_reading_columns_on_one_tab_only(self):
+        sheets = {
+            'Art': _session('Drawing'),
+            'Reading': self._reading_tab(),
+            'Science': _session('Plants'),
+        }
+        _write_workbook(self.path, sheets)
+
+        html = generate_plots([self.path])
+
+        self._assert_reading_widgets(html)
+
+    def test_no_reading_columns_omits_reading_widgets(self):
+        _write_workbook(self.path, {'Art': _session('Drawing')})
+
+        html = generate_plots([self.path])
+
+        self.assertFalse('Sample Title' in html, 'unexpected booklist')
+        self.assertFalse('Reading Level' in html, 'unexpected reading level chart')
 
 
 if __name__ == '__main__':

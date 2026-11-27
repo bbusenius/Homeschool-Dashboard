@@ -230,22 +230,20 @@ def generate_plots(files):
 
                 try:
                     column_index = df.columns.get_loc('reading list')
-                    reading_list_path = df.iloc[0, column_index]
+                    tmp_path = df.iloc[0, column_index]
+                    if isinstance(tmp_path, str) and tmp_path.strip():
+                        reading_list_path = tmp_path
                 except (KeyError):
                     pass
 
-                # Build reading lists if a path was found.
-                if reading_list_path:
-                    reading_lists = reading_list(
-                        reading_list_path,
-                        base_dir=os.path.dirname(os.path.abspath(file)),
-                    )
-
-                # Reading level if it exists.
+                # Reading level if it exists. Tabs with the column but
+                # no values leave an earlier tab's levels in place.
                 try:
-                    level = df['reading level'].dropna()
-                    copy = df.loc[level.index]
-                    level_date = pd.to_datetime(copy['date'])
+                    tmp_level = df['reading level'].dropna()
+                    if not tmp_level.empty:
+                        level = tmp_level
+                        copy = df.loc[level.index]
+                        level_date = pd.to_datetime(copy['date'])
                 except (KeyError):
                     pass
 
@@ -253,6 +251,13 @@ def generate_plots(files):
                 raise type(e)(
                     f"Sheet '{sheet_name}' in '{filename}': {e}"
                 ) from e
+
+        # Build reading lists if a path was found.
+        if reading_list_path:
+            reading_lists = reading_list(
+                reading_list_path,
+                base_dir=os.path.dirname(os.path.abspath(file)),
+            )
 
         # Simple HTML elements to drop on the page.
         total = sum(hours)
